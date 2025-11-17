@@ -591,8 +591,8 @@ class ApiClient {
     /**
      * 重新下单
      */
-    async reorder(orderId) {
-        return this.postForm('/order/reorder', { orderId });
+    async reorder(orderId, userId) {
+        return this.postForm(`/order/reorder/${orderId}`, { userId });
     }
 
     // ==================== 管理员相关API ====================
@@ -623,6 +623,15 @@ class ApiClient {
      */
     async updateOrderStatus(orderId, status) {
         return this.request(`/order/${orderId}/status?status=${encodeURIComponent(status)}`, {
+            method: 'PUT'
+        });
+    }
+
+    /**
+     * 拒绝订单（管理员）- 会触发退款逻辑
+     */
+    async rejectOrder(orderId) {
+        return this.request(`/order/${orderId}/reject`, {
             method: 'PUT'
         });
     }

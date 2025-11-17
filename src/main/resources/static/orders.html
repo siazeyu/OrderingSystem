@@ -604,7 +604,7 @@
         <div class="nav-container">
             <div class="nav-links">
                 <a href="index.html">首页</a>
-                <a href="cart.html">购物车</a>
+                <a href="cart.html">购物车 (<span id="cartCount">0</span>)</a>
                 <a href="#" class="active">我的订单</a>
                 <a href="wallet.html">我的钱包</a>
                 <a href="profile.html">个人资料</a>
@@ -653,11 +653,13 @@
         let currentUserId = null;
         let currentUser = null;
         let currentFilter = 'all';
+        let cart = {}; // 购物车数据
 
         // 初始化页面
         window.onload = function() {
             loadUserFromStorage();
             checkUserStatus();
+            loadCart(); // 加载购物车数据
             loadOrders();
         };
 
@@ -730,6 +732,36 @@
                 }
             } else {
                 currentUserId = null;
+            }
+        }
+
+        // 加载购物车
+        async function loadCart() {
+            cart = {};
+            
+            if (currentUser) {
+                // 登录用户：从服务器加载
+                try {
+                    const result = await api.cart.getCartItems(currentUser.id);
+                    if (result.code === 200) {
+                        result.data.forEach(item => {
+                            cart[item.productId] = item.quantity;
+                        });
+                    }
+                } catch (error) {
+                    console.error('加载购物车失败:', error);
+                }
+            }
+            
+            updateCartCount();
+        }
+
+        // 更新购物车数量显示
+        function updateCartCount() {
+            const totalItems = Object.values(cart).reduce((sum, quantity) => sum + quantity, 0);
+            const cartCountElement = document.getElementById('cartCount');
+            if (cartCountElement) {
+                cartCountElement.textContent = totalItems;
             }
         }
 
@@ -1068,16 +1100,13 @@
             loadingManager.show('正在加入购物车...');
 
             try {
-                const order = orders.find(o => o.id === orderId);
-                if (!order || !order.orderItems) return;
-
-                // 将订单商品重新加入购物车
-                for (const item of order.orderItems) {
-                    await api.cart.addToCart(currentUserId, item.productId, item.quantity);
+                const result = await api.reorder(orderId, currentUserId);
+                if (result.code === 200) {
+                    showMessage(result.message || '商品已加入购物车！');
+                    updateCartCount(); // 更新购物车数量
+                } else {
+                    showMessage(result.message || '加入购物车失败', 'error');
                 }
-
-                showMessage('商品已加入购物车！');
-                updateCartCount(); // 更新购物车数量
             } catch (error) {
                 console.error('再来一单失败:', error);
                 showMessage('网络错误，请重试', 'error');

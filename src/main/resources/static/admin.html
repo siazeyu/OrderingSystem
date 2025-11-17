@@ -964,12 +964,12 @@
                 case 'pending':
                     return `
                         <button class="btn btn-success" onclick="updateOrderStatus(${order.id}, 'confirmed')">接单</button>
-                        <button class="btn btn-danger" onclick="updateOrderStatus(${order.id}, 'rejected')">拒绝</button>
+                        <button class="btn btn-danger" onclick="rejectOrder(${order.id})">拒绝</button>
                     `;
                 case 'paid':
                     return `
                         <button class="btn btn-success" onclick="updateOrderStatus(${order.id}, 'confirmed')">接单</button>
-                        <button class="btn btn-danger" onclick="updateOrderStatus(${order.id}, 'rejected')">拒绝</button>
+                        <button class="btn btn-danger" onclick="rejectOrder(${order.id})">拒绝</button>
                     `;
                 case 'confirmed':
                     return `
@@ -1137,6 +1137,31 @@
             }
         }
 
+        // 拒绝订单（会触发退款）
+        async function rejectOrder(orderId) {
+            if (!confirm('确定要拒绝这个订单吗？已支付的订单将自动退款给用户。')) {
+                return;
+            }
+
+            try {
+                loadingManager.show('正在拒绝订单并处理退款...');
+                const result = await api.rejectOrder(orderId);
+                
+                if (result.code === 200) {
+                    showMessage('订单已拒绝，退款已处理');
+                    loadOrders();
+                    loadDashboard();
+                } else {
+                    showMessage(result.message || '拒绝订单失败', 'error');
+                }
+            } catch (error) {
+                console.error('拒绝订单失败:', error);
+                showMessage('网络错误，请重试', 'error');
+            } finally {
+                loadingManager.hide();
+            }
+        }
+
         // 显示订单详情
         function showOrderDetail(orderId) {
             // 从已加载的订单数据中查找对应的订单
@@ -1154,6 +1179,18 @@
         function renderOrderDetail(order) {
             const content = document.getElementById('orderDetailContent');
             
+            const paymentStatusText = {
+                'unpaid': '未支付',
+                'paid': '已支付',
+                'refunded': '已退款'
+            };
+            
+            const paymentStatusClass = {
+                'unpaid': 'status-pending',
+                'paid': 'status-completed',
+                'refunded': 'status-rejected'
+            };
+            
             const orderItemsHtml = order.orderItems ? order.orderItems.map(item => `
                 <tr>
                     <td>${item.productName}</td>
@@ -1170,6 +1207,7 @@
                         <div><strong>订单号：</strong>${order.orderNo}</div>
                         <div><strong>下单时间：</strong>${formatTime(order.createdTime)}</div>
                         <div><strong>订单状态：</strong><span class="status-badge status-${order.status}">${getOrderStatusText(order.status)}</span></div>
+                        <div><strong>支付状态：</strong><span class="status-badge ${paymentStatusClass[order.paymentStatus] || 'status-pending'}">${paymentStatusText[order.paymentStatus] || order.paymentStatus}</span></div>
                         <div><strong>订单金额：</strong><span style="color: #ff6b6b; font-weight: bold;">¥${order.totalAmount}</span></div>
                     </div>
                 </div>

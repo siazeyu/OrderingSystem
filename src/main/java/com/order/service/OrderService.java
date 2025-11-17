@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -332,11 +331,6 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("订单不存在"));
 
-        OrderStatus currentStatus = OrderStatus.fromCode(order.getStatus());
-        if (currentStatus != OrderStatus.PENDING) {
-            throw new RuntimeException("只有待处理的订单才能拒绝");
-        }
-
         // 如果已支付，需要退款
         if (PaymentStatus.PAID.getCode().equals(order.getPaymentStatus())) {
             // 退款到钱包
@@ -408,6 +402,52 @@ public class OrderService {
 
         order.setStatus(OrderStatus.COMPLETED.getCode());
         return orderRepository.save(order);
+    }
+
+    /**
+     * 将订单商品重新加入购物车
+     */
+    @Transactional
+    public int addOrderItemsToCart(Order order, Long userId) {
+        int addedCount = 0;
+        
+        // 清空用户现有购物车（可选，根据业务需求）
+        // shoppingCartRepository.deleteByUserId(userId);
+        
+        for (OrderItem orderItem : order.getOrderItems()) {
+            // 检查商品是否还存在且可用
+            Product product = productRepository.findById(orderItem.getProductId()).orElse(null);
+            if (product == null || product.getStatus() != 1) {
+                continue; // 跳过不存在或已下架的商品
+            }
+            
+            // 检查库存
+            if (product.getStock() < orderItem.getQuantity()) {
+                continue; // 跳过库存不足的商品
+            }
+            
+            // 检查购物车中是否已有该商品
+            ShoppingCart existingCartItem = shoppingCartRepository
+                    .findByUserIdAndProductId(userId, orderItem.getProductId());
+            
+            if (existingCartItem != null) {
+                // 更新现有购物车项的数量
+                int newQuantity = existingCartItem.getQuantity() + orderItem.getQuantity();
+                existingCartItem.setQuantity(newQuantity);
+                shoppingCartRepository.save(existingCartItem);
+            } else {
+                // 创建新的购物车项
+                ShoppingCart cartItem = new ShoppingCart();
+                cartItem.setUserId(userId);
+                cartItem.setProductId(orderItem.getProductId());
+                cartItem.setQuantity(orderItem.getQuantity());
+                shoppingCartRepository.save(cartItem);
+            }
+            
+            addedCount++;
+        }
+        
+        return addedCount;
     }
 
     /**

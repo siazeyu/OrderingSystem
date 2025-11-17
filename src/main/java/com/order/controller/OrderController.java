@@ -190,16 +190,22 @@ public class OrderController {
      * 再来一单（根据原订单创建新订单）
      */
     @PostMapping("/reorder/{orderId}")
-    public Result<String> reorder(@PathVariable Long orderId) {
+    public Result<String> reorder(@PathVariable Long orderId, @RequestParam Long userId) {
         try {
-            Order originalOrder = orderService.findByOrderNo(orderId.toString());
+            Order originalOrder = orderService.findById(orderId);
             if (originalOrder == null) {
                 return Result.error("原订单不存在");
             }
             
-            // 这里可以实现将原订单商品重新加入购物车的逻辑
-            // 暂时返回成功信息
-            return Result.success("商品已加入购物车");
+            // 验证订单是否属于当前用户
+            if (!originalOrder.getUserId().equals(userId)) {
+                return Result.error("无权限操作此订单");
+            }
+            
+            // 将原订单商品重新加入购物车
+            int addedCount = orderService.addOrderItemsToCart(originalOrder, userId);
+            
+            return Result.success("成功将 " + addedCount + " 件商品加入购物车");
         } catch (Exception e) {
             return Result.error("再来一单失败：" + e.getMessage());
         }
@@ -295,16 +301,4 @@ public class OrderController {
         }
     }
 
-    /**
-     * 获取商家所有订单列表
-     */
-    @GetMapping("/merchant/all")
-    public Result<List<Order>> getAllOrdersForMerchant() {
-        try {
-            List<Order> orders = orderService.getAllOrdersForMerchant();
-            return Result.success(orders);
-        } catch (Exception e) {
-            return Result.error("获取商家订单失败：" + e.getMessage());
-        }
-    }
 }
