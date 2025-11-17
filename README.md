@@ -634,14 +634,5 @@ tail -f logs/ordering-system.log | grep ERROR
 - [Bootstrap](https://getbootstrap.com/) - 响应式CSS框架
 - [Font Awesome](https://fontawesome.com/) - 优秀的图标库
 
-## 📞 联系方式
-
-如有问题或建议，欢迎通过以下方式联系：
-
-- 📧 邮箱: [your-email@example.com]
-- 🐛 Issues: [GitHub Issues](https://github.com/your-username/ordering-system/issues)
-- 💬 讨论: [GitHub Discussions](https://github.com/your-username/ordering-system/discussions)
-
----
 
 ⭐ 如果这个项目对您有帮助，请给我们一个Star！
