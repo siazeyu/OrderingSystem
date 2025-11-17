@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API测试</title>
+</head>
+<body>
+    <h1>API测试页面</h1>
+    <button onclick="testUserAPI()">测试用户API</button>
+    <button onclick="testAddressAPI()">测试地址API</button>
+    <div id="result"></div>
+
+    <script src="js/api.js"></script>
+    <script>
+        function testUserAPI() {
+            // 测试获取用户信息
+            api.user.getUser(1).then(response => {
+                document.getElementById('result').innerHTML = '<h3>用户API测试结果:</h3><pre>' + JSON.stringify(response, null, 2) + '</pre>';
+            }).catch(error => {
+                document.getElementById('result').innerHTML = '<h3>用户API测试失败:</h3><pre>' + error + '</pre>';
+            });
+        }
+
+        function testAddressAPI() {
+            // 测试获取地址列表
+            api.userAddress.getUserAddresses(1).then(response => {
+                document.getElementById('result').innerHTML = '<h3>地址API测试结果:</h3><pre>' + JSON.stringify(response, null, 2) + '</pre>';
+            }).catch(error => {
+                document.getElementById('result').innerHTML = '<h3>地址API测试失败:</h3><pre>' + error + '</pre>';
+            });
+        }
+    </script>
+</body>
+</html>

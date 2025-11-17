@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>防重复提交功能测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .submitting {
+            position: relative;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        .submitting::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 12px;
+            height: 12px;
+            margin: -6px 0 0 -6px;
+            border: 2px solid transparent;
+            border-top: 2px solid currentColor;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>防重复提交功能测试</h1>
+    
+    <div class="test-section">
+        <h2>测试1: 按钮防重复提交</h2>
+        <p>快速连续点击按钮，观察按钮状态变化</p>
+        <button class="test-button" onclick="testButtonSubmit(this)">测试按钮提交</button>
+        <div id="buttonLog" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>测试2: 表单防重复提交</h2>
+        <p>快速连续提交表单，观察表单状态变化</p>
+        <form id="testForm" onsubmit="testFormSubmit(event, this)">
+            <input type="text" placeholder="测试输入" required>
+            <button type="submit" class="test-button">提交表单</button>
+        </form>
+        <div id="formLog" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>测试3: 加载提示功能</h2>
+        <p>测试全局加载提示和按钮加载状态</p>
+        <button class="test-button" onclick="testLoading(this)">测试加载提示</button>
+        <div id="loadingLog" class="log"></div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        let logCount = 0;
+
+        function addLog(containerId, message) {
+            const logContainer = document.getElementById(containerId);
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            // 限制日志条数
+            if (logContainer.children.length > 20) {
+                logContainer.removeChild(logContainer.firstChild);
+            }
+        }
+
+        // 测试按钮防重复提交
+        async function testButtonSubmit(button) {
+            addLog('buttonLog', `按钮点击开始 - 第${++logCount}次`);
+            
+            // 应用防重复提交
+            if (!submitManager.canSubmit(button)) {
+                addLog('buttonLog', '❌ 按钮被阻止，正在提交中...');
+                return;
+            }
+            
+            submitManager.setButtonSubmitting(button, true, '提交中...');
+            addLog('buttonLog', '✅ 按钮开始提交，状态已设置为提交中');
+            
+            try {
+                // 模拟异步操作
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                addLog('buttonLog', '✅ 提交完成');
+            } catch (error) {
+                addLog('buttonLog', `❌ 提交失败: ${error.message}`);
+            } finally {
+                submitManager.setButtonSubmitting(button, false);
+                addLog('buttonLog', '🔄 按钮状态已恢复');
+            }
+        }
+
+        // 测试表单防重复提交
+        async function testFormSubmit(event, form) {
+            event.preventDefault();
+            addLog('formLog', `表单提交开始 - 第${++logCount}次`);
+            
+            // 应用防重复提交
+            if (!submitManager.canSubmitForm(form)) {
+                addLog('formLog', '❌ 表单被阻止，正在提交中...');
+                return;
+            }
+            
+            submitManager.setFormSubmitting(form, true);
+            addLog('formLog', '✅ 表单开始提交，状态已设置为提交中');
+            
+            try {
+                // 模拟异步操作
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                addLog('formLog', '✅ 表单提交完成');
+            } catch (error) {
+                addLog('formLog', `❌ 表单提交失败: ${error.message}`);
+            } finally {
+                submitManager.setFormSubmitting(form, false);
+                addLog('formLog', '🔄 表单状态已恢复');
+            }
+        }
+
+        // 测试加载提示
+        async function testLoading(button) {
+            addLog('loadingLog', '开始测试加载提示');
+            
+            // 测试全局加载提示
+            loadingManager.show('正在处理请求...');
+            addLog('loadingLog', '✅ 全局加载提示已显示');
+            
+            // 测试按钮加载状态
+            loadingManager.setButtonLoading(button, true, '加载中...');
+            addLog('loadingLog', '✅ 按钮加载状态已设置');
+            
+            try {
+                // 模拟异步操作
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                addLog('loadingLog', '✅ 加载完成');
+            } catch (error) {
+                addLog('loadingLog', `❌ 加载失败: ${error.message}`);
+            } finally {
+                loadingManager.setButtonLoading(button, false);
+                loadingManager.hide();
+                addLog('loadingLog', '🔄 加载状态已恢复');
+            }
+        }
+
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            addLog('buttonLog', '页面加载完成，可以开始测试');
+            addLog('formLog', '页面加载完成，可以开始测试');
+            addLog('loadingLog', '页面加载完成，可以开始测试');
+        });
+    </script>
+</body>
+</html>
